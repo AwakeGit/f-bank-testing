@@ -17,39 +17,38 @@ def driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1280,800")
-    options.add_argument("--allow-running-insecure-content")
-    options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
     drv = webdriver.Chrome(options=options)
     yield drv
     drv.quit()
 
 
-def _wait_for_buttons(driver, count=3, timeout=30):
+def _wait_for_react(driver, timeout=30):
     end = time.time() + timeout
     while time.time() < end:
-        n = driver.execute_script("return document.querySelectorAll('button').length")
-        if n >= count:
+        n = driver.execute_script(
+            "return document.querySelectorAll('h2').length"
+        )
+        if n >= 3:
             return
         time.sleep(0.5)
-    title = driver.title
-    n = driver.execute_script("return document.querySelectorAll('button').length")
-    src = driver.page_source[:600]
-    try:
-        logs = driver.get_log("browser")
-    except Exception:
-        logs = "unavailable"
+    h2_count = driver.execute_script("return document.querySelectorAll('h2').length")
     raise AssertionError(
-        f"Страница не отрисовалась за {timeout}с. "
-        f"title='{title}', buttons={n}\n"
-        f"Console logs: {logs}\n"
-        f"source={src!r}"
+        f"React не отрисовался за {timeout}с. h2 count={h2_count}"
     )
 
 
 def _open_transfer_form(driver, balance=30000, reserved=20001):
     driver.get(f"{BASE_URL}/?balance={balance}&reserved={reserved}")
-    _wait_for_buttons(driver)
-    driver.find_elements(By.TAG_NAME, "button")[0].click()
+    _wait_for_react(driver)
+    driver.execute_script("""
+        var headings = document.querySelectorAll('h2');
+        for (var h of headings) {
+            if (h.textContent.includes('Рубли')) {
+                h.parentElement.click();
+                break;
+            }
+        }
+    """)
     end = time.time() + 10
     while time.time() < end:
         if driver.find_elements(By.CSS_SELECTOR, "input[placeholder='0000 0000 0000 0000']"):
