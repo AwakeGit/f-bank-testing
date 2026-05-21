@@ -14,9 +14,11 @@ CARD = "1111111111111111"
 @pytest.fixture
 def driver():
     options = Options()
-    options.add_argument("--headless=new")
+    options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1280,800")
     drv = webdriver.Chrome(options=options)
     yield drv
     drv.quit()
@@ -24,14 +26,13 @@ def driver():
 
 def _open_transfer_form(driver, balance=30000, reserved=20001):
     driver.get(f"{BASE_URL}/?balance={balance}&reserved={reserved}")
-    wait = WebDriverWait(driver, 10)
-    wait.until(EC.element_to_be_clickable(
-        (By.XPATH, "//button[.//h2[text()='Рубли']]")
-    )).click()
-    wait.until(EC.visibility_of_element_located(
+    wait = WebDriverWait(driver, 20)
+    wait.until(lambda d: len(d.find_elements(By.TAG_NAME, "button")) >= 3)
+    driver.find_elements(By.TAG_NAME, "button")[0].click()
+    wait.until(EC.presence_of_element_located(
         (By.CSS_SELECTOR, "input[placeholder='0000 0000 0000 0000']")
     )).send_keys(CARD)
-    wait.until(EC.visibility_of_element_located(
+    wait.until(EC.presence_of_element_located(
         (By.CSS_SELECTOR, "input[placeholder='1000']")
     ))
 
