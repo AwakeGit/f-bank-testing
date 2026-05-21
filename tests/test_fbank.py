@@ -4,7 +4,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
 
 BASE_URL = "http://localhost:8000"
 CARD = "1111111111111111"
@@ -23,19 +22,37 @@ def driver():
     drv.quit()
 
 
-def _js_wait(driver, js, timeout=30):
-    WebDriverWait(driver, timeout).until(
-        lambda d: d.execute_script(f"return !!({js})")
+def _wait_for_buttons(driver, count=3, timeout=30):
+    end = time.time() + timeout
+    while time.time() < end:
+        n = driver.execute_script("return document.querySelectorAll('button').length")
+        if n >= count:
+            return
+        time.sleep(0.5)
+    title = driver.title
+    n = driver.execute_script("return document.querySelectorAll('button').length")
+    src = driver.page_source[:300]
+    raise AssertionError(
+        f"Страница не отрисовалась за {timeout}с. "
+        f"title='{title}', buttons={n}, source={src!r}"
     )
 
 
 def _open_transfer_form(driver, balance=30000, reserved=20001):
     driver.get(f"{BASE_URL}/?balance={balance}&reserved={reserved}")
-    _js_wait(driver, "document.querySelectorAll('button').length >= 3")
+    _wait_for_buttons(driver)
     driver.find_elements(By.TAG_NAME, "button")[0].click()
-    _js_wait(driver, "document.querySelector(\"input[placeholder='0000 0000 0000 0000']\")", 10)
+    end = time.time() + 10
+    while time.time() < end:
+        if driver.find_elements(By.CSS_SELECTOR, "input[placeholder='0000 0000 0000 0000']"):
+            break
+        time.sleep(0.3)
     driver.find_element(By.CSS_SELECTOR, "input[placeholder='0000 0000 0000 0000']").send_keys(CARD)
-    _js_wait(driver, "document.querySelector(\"input[placeholder='1000']\")", 10)
+    end = time.time() + 10
+    while time.time() < end:
+        if driver.find_elements(By.CSS_SELECTOR, "input[placeholder='1000']"):
+            break
+        time.sleep(0.3)
 
 
 def _set_amount(driver, amount):
