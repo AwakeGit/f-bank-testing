@@ -12,11 +12,13 @@ CARD = "1111111111111111"
 @pytest.fixture
 def driver():
     options = Options()
-    options.add_argument("--headless=new")
+    options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1280,800")
+    options.add_argument("--allow-running-insecure-content")
+    options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
     drv = webdriver.Chrome(options=options)
     yield drv
     drv.quit()
@@ -31,10 +33,16 @@ def _wait_for_buttons(driver, count=3, timeout=30):
         time.sleep(0.5)
     title = driver.title
     n = driver.execute_script("return document.querySelectorAll('button').length")
-    src = driver.page_source[:300]
+    src = driver.page_source[:600]
+    try:
+        logs = driver.get_log("browser")
+    except Exception:
+        logs = "unavailable"
     raise AssertionError(
         f"Страница не отрисовалась за {timeout}с. "
-        f"title='{title}', buttons={n}, source={src!r}"
+        f"title='{title}', buttons={n}\n"
+        f"Console logs: {logs}\n"
+        f"source={src!r}"
     )
 
 
