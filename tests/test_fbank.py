@@ -5,7 +5,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 BASE_URL = "http://localhost:8000"
 CARD = "1111111111111111"
@@ -14,7 +13,7 @@ CARD = "1111111111111111"
 @pytest.fixture
 def driver():
     options = Options()
-    options.add_argument("--headless")
+    options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
@@ -24,17 +23,19 @@ def driver():
     drv.quit()
 
 
+def _js_wait(driver, js, timeout=30):
+    WebDriverWait(driver, timeout).until(
+        lambda d: d.execute_script(f"return !!({js})")
+    )
+
+
 def _open_transfer_form(driver, balance=30000, reserved=20001):
     driver.get(f"{BASE_URL}/?balance={balance}&reserved={reserved}")
-    wait = WebDriverWait(driver, 20)
-    wait.until(lambda d: len(d.find_elements(By.TAG_NAME, "button")) >= 3)
+    _js_wait(driver, "document.querySelectorAll('button').length >= 3")
     driver.find_elements(By.TAG_NAME, "button")[0].click()
-    wait.until(EC.presence_of_element_located(
-        (By.CSS_SELECTOR, "input[placeholder='0000 0000 0000 0000']")
-    )).send_keys(CARD)
-    wait.until(EC.presence_of_element_located(
-        (By.CSS_SELECTOR, "input[placeholder='1000']")
-    ))
+    _js_wait(driver, "document.querySelector(\"input[placeholder='0000 0000 0000 0000']\")", 10)
+    driver.find_element(By.CSS_SELECTOR, "input[placeholder='0000 0000 0000 0000']").send_keys(CARD)
+    _js_wait(driver, "document.querySelector(\"input[placeholder='1000']\")", 10)
 
 
 def _set_amount(driver, amount):

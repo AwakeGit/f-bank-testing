@@ -22,6 +22,7 @@ jobs:
         run: |
           python3 -m http.server 8000 --directory dist &
           sleep 2
+          curl -sf http://localhost:8000/ > /dev/null && echo "Server is up"
 
       - name: Run Selenium tests
         run: pytest tests/ -v
